@@ -30,17 +30,7 @@ def softmax_kernel(
 
     for row_idx in range(pid, n_rows, num_programs):
         # Load the row tile using index-based access
-        # Note: TILE_SIZE is expected to be >= DIM_COLS (ensured by launch function)
         row = ct.load(input, index=(row_idx, 0), shape=(1, TILE_SIZE), padding_mode=ct.PaddingMode.NEG_INF)
-
-        # Create mask for valid columns
-        col_offsets = ct.arange(TILE_SIZE, dtype=torch.int32)
-        mask_col = col_offsets < DIM_COLS
-        mask = mask_col[None, :]
-
-        # Apply mask by setting invalid positions to -inf for numerical stability
-        neg_inf_tile = ct.full((1, TILE_SIZE), -np.inf, dtype=row.dtype)
-        row = ct.where(mask, row, neg_inf_tile)
 
         # Convert to float32 for computation
         row = ct.astype(row, torch.float32)
@@ -80,15 +70,6 @@ def softmax_kernel_tma(
     for row_idx in range(pid, n_rows, num_programs):
         # Load the entire row in one tile (TILE_SIZE >= n_cols by design)
         row = ct.load(input, index=(row_idx, 0), shape=(1, TILE_SIZE), padding_mode=ct.PaddingMode.NEG_INF)
-
-        # Create mask for valid columns
-        col_offsets = ct.arange(TILE_SIZE, dtype=torch.int32)
-        mask_col = col_offsets < n_cols
-        mask = mask_col[None, :]
-
-        # Apply mask by setting invalid positions to -inf
-        neg_inf_tile = ct.full((1, TILE_SIZE), -np.inf, dtype=row.dtype)
-        row = ct.where(mask, row, neg_inf_tile)
 
         # Convert to float32 for computation
         row = ct.astype(row, np.float32)
