@@ -33,7 +33,7 @@ if is_backend_available("cutile"):
     from .flash_decode import fmha_decode
     from .moe import fused_moe_kernel as invoke_fused_moe_kernel
     from .moe_align_block import moe_align_block_size
-    from .rms_norm import get_rms_norm_module
+    #from .rms_norm import get_rms_norm_module
     from .rms_norm import rms_norm
     from .rope import apply_rope_base
     from .rope import get_apply_rope_func

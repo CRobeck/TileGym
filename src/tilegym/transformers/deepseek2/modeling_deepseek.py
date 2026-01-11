@@ -22,7 +22,7 @@ if version.parse(current_version) < version.parse(REQUIRED_TRANSFORMERS_VERSION)
 
 from tilegym.logger import get_logger
 from tilegym.ops import fused_moe_kernel_interface
-from tilegym.ops import get_fused_swiglu_module
+from tilegym.ops.fused_swiglu import PartiallyFusedSwiGLUMLP
 from tilegym.ops import group_gemm
 from tilegym.ops import mla_interface
 from tilegym.ops.attn_interface import mla_decoding_interface
@@ -280,7 +280,7 @@ class DeepseekV2MoETileGym(nn.Module):
         if config.n_shared_experts is not None:
             intermediate_size = config.moe_intermediate_size * config.n_shared_experts
             # Use PartiallyFusedSwiGLUMLP for shared experts to eliminate PyTorch linear operations
-            FusedSwiGLUMLP = get_fused_swiglu_module()
+            FusedSwiGLUMLP = PartiallyFusedSwiGLUMLP
             self.shared_experts = FusedSwiGLUMLP(config=config, intermediate_size=intermediate_size)
         self.ep_rank = 0
         self.experts_per_rank = config.n_routed_experts

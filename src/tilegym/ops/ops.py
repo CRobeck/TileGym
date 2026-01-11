@@ -101,25 +101,25 @@ def get_swiglu():
     raise NotImplementedError(f"get_swiglu is not implemented for {get_current_backend()}")
 
 
-def get_fused_swiglu_module():
-    """
-    Returns the fused SwiGLU module class.
+# def get_fused_swiglu_module():
+#     """
+#     Returns the fused SwiGLU module class.
 
-    This module uses a partial fused kernel for the entire SwiGLU operation:
-    output = activation(input @ W1_act^T) ⊙ (input @ W1_noact^T) @ W2^T
+#     This module uses a partial fused kernel for the entire SwiGLU operation:
+#     output = activation(input @ W1_act^T) ⊙ (input @ W1_noact^T) @ W2^T
 
-    This eliminates ALL PyTorch linear operations and intermediate tensor materializations,
-    providing better performance than get_swiglu_module().
+#     This eliminates ALL PyTorch linear operations and intermediate tensor materializations,
+#     providing better performance than get_swiglu_module().
 
-    Note: This doesn't need backend dispatch - the PartiallyFusedSwiGLUMLP class automatically
-    dispatches to the correct backend kernel internally.
+#     Note: This doesn't need backend dispatch - the PartiallyFusedSwiGLUMLP class automatically
+#     dispatches to the correct backend kernel internally.
 
-    Returns:
-        PartiallyFusedSwiGLUMLP class
-    """
-    from tilegym.ops.fused_swiglu import PartiallyFusedSwiGLUMLP
+#     Returns:
+#         PartiallyFusedSwiGLUMLP class
+#     """
+#     from tilegym.ops.fused_swiglu import PartiallyFusedSwiGLUMLP
 
-    return PartiallyFusedSwiGLUMLP
+#     return PartiallyFusedSwiGLUMLP
 
 
 # @dispatch(

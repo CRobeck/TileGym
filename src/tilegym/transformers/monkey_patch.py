@@ -9,10 +9,8 @@ from transformers import PreTrainedModel
 from tilegym import set_backend
 from tilegym.logger import get_logger
 from tilegym.ops.cutile.rope import get_apply_rope_func
-from tilegym.ops.attn_interface import get_fmha_interface
-from tilegym.ops import get_fused_swiglu_module
-from tilegym.ops.cutile.rms_norm import get_rms_norm_module
-from tilegym.ops import get_swiglu_module
+from tilegym.ops.fused_swiglu import PartiallyFusedSwiGLUMLP
+from tilegym.ops.cutile.rms_norm import TileRMSNorm
 from tilegym.transformers.deepseek2.modeling_deepseek import DeepseekV2MoETileGym
 from tilegym.transformers.deepseek2.modeling_deepseek import tilegym_deepseek_v2_forward
 
@@ -50,12 +48,12 @@ def apply_tilegym_kernel_to_deepseek_v2(
 
     modeling_deepseek.apply_rotary_emb = get_apply_rope_func()
 
-    modeling_deepseek.DeepseekV2RMSNorm = get_rms_norm_module()
+    modeling_deepseek.DeepseekV2RMSNorm = TileRMSNorm
 
      # Replace DeepseekV2MLP with TileGym's FUSED SwiGLU implementation
      # This eliminates ALL PyTorch linear operations by fusing gate+up+down projections.
      # This is critical for shared experts which run on every token.
-    modeling_deepseek.DeepseekV2MLP = get_fused_swiglu_module()
+    modeling_deepseek.DeepseekV2MLP = PartiallyFusedSwiGLUMLP
 
 
      # Replace attention forward with TileGym implementation

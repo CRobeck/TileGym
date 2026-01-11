@@ -314,5 +314,5 @@ class TileRMSNorm(nn.Module):
 
 
 # @register_impl("get_rms_norm_module", backend="cutile")
-def get_rms_norm_module():
-    return TileRMSNorm
+# def get_rms_norm_module():
+#     return TileRMSNorm
