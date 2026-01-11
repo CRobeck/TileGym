@@ -9,6 +9,8 @@ set -e
 
 MODEL_ID="deepseek-ai/DeepSeek-V2-Lite-Chat"
 INPUT_FILE="sample_inputs/input_prompt_small.txt"
+INPUT_TEXT="Explain machine learning"
+
 OUTPUT_LENGTH=100
 SUMMARY_FILE="deepseek_benchmark_summary.txt"
 
@@ -24,24 +26,24 @@ echo ""
 # Clean previous results
 rm -f ${SUMMARY_FILE}
 
-echo "Running PyTorch baseline..."
-python infer.py \
-    --model_id ${MODEL_ID} \
-    --profile \
-    --sentence_file ${INPUT_FILE} \
-    --output_length ${OUTPUT_LENGTH} \
-    --summary_file ${SUMMARY_FILE}
+# echo "Running PyTorch baseline..."
+# python infer.py \
+#     --model_id ${MODEL_ID} \
+#     --sentence_file ${INPUT_FILE} \
+#     --output_length ${OUTPUT_LENGTH} \
+#     --summary_file ${SUMMARY_FILE}
 
 echo ""
 echo "Running TileGym CUTILE backend..."
 python infer.py \
     --model_id ${MODEL_ID} \
+    --batch_size 1 \
     --use_tilegym \
     --use_cutile \
     --use_attn \
-    --profile \
-    --sentence_file ${INPUT_FILE} \
+    --input_text "Explain machine learning" \
     --output_length ${OUTPUT_LENGTH} \
+    --show_outputs \
     --summary_file ${SUMMARY_FILE}
 
 echo ""

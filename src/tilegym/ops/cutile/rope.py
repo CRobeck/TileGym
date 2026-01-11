@@ -210,24 +210,25 @@ def apply_rope_base(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
     return TileRopeFunction.apply(q, k, cos, sin, position_ids, unsqueeze_dim)
 
 
-@register_impl("get_apply_rope_func", backend="cutile")
+# @register_impl("get_apply_rope_func", backend="cutile")
 def get_apply_rope_func(model="llama"):
-    if model == "llama":
-        return apply_rope_base
-    elif model == "deepseek":
+    # if model == "llama":
+    #     return apply_rope_base
+    # elif model == "deepseek":
 
-        def wrapper(q, k, freqs_cis):
-            cos, sin = freqs_cis.real, freqs_cis.imag
+    def wrapper(q, k, freqs_cis):
+        cos, sin = freqs_cis.real, freqs_cis.imag
 
-            b, h, s, d = q.shape
-            q = q.view(b, h, s, d // 2, 2).transpose(4, 3).reshape(b, h, s, d)
+        b, h, s, d = q.shape
+        q = q.view(b, h, s, d // 2, 2).transpose(4, 3).reshape(b, h, s, d)
 
-            b, h, s, d = k.shape
-            k = k.view(b, h, s, d // 2, 2).transpose(4, 3).reshape(b, h, s, d)
+        b, h, s, d = k.shape
+        k = k.view(b, h, s, d // 2, 2).transpose(4, 3).reshape(b, h, s, d)
 
-            return apply_rope_base(q, k, cos, sin)
+        # return apply_rope_base(q, k, cos, sin)
+        return TileRopeFunction.apply(q, k, cos, sin)
 
-        return wrapper
+    return wrapper
 
-    else:
-        raise ValueError(f"Unsupported model: {model}")
+    # else:
+    #     raise ValueError(f"Unsupported model: {model}")

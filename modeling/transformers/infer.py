@@ -17,7 +17,8 @@ from transformers import AutoModelForCausalLM
 from transformers import AutoTokenizer
 
 from tilegym.transformers import apply_tilegym_kernel_to_deepseek_v2
-from tilegym.transformers import apply_tilegym_kernel_to_llama
+# from tilegym.transformers import apply_tilegym_kernel_to_llama
+from transformers.models.deepseek_v2 import modeling_deepseek_v2 as modeling_deepseek
 
 
 def check_and_setup_model_cache(model_id):
@@ -168,7 +169,7 @@ def parse_args():
     parser.add_argument(
         "--log_dir",
         type=str,
-        default="/logs",
+        default="./logs",
         help="Directory to save profiler logs (default: /logs)",
     )
     # precision: bfloat16 or float32
@@ -201,16 +202,16 @@ def get_messages_list(args):
     return messages_list
 
 
-def apply_tilegym_patch(model_id, use_attn=False, use_cutile=False):
-    model_name = model_id.lower()
-    if "llama" in model_name:
-        apply_tilegym_kernel_to_llama(rope=True, swiglu=True, rms_norm=True, attn=use_attn, use_cutile=use_cutile)
-    elif "deepseek" in model_name:
-        apply_tilegym_kernel_to_deepseek_v2(
-            rope=True, rms_norm=True, swiglu=True, attn=use_attn, moe=True, use_cutile=use_cutile
-        )
-    else:
-        print(f"Warning: Model {model_id} is not supported in tilegym patch. No optimizations will be applied.")
+# def apply_tilegym_patch(model_id, use_attn=False, use_cutile=False):
+#     model_name = model_id.lower()
+#     # if "llama" in model_name:
+#     #     apply_tilegym_kernel_to_llama(rope=True, swiglu=True, rms_norm=True, attn=use_attn, use_cutile=use_cutile)
+#     elif "deepseek" in model_name:
+#         apply_tilegym_kernel_to_deepseek_v2(
+#             rope=True, rms_norm=True, swiglu=True, attn=use_attn, moe=True, use_cutile=use_cutile
+#         )
+#     else:
+#         print(f"Warning: Model {model_id} is not supported in tilegym patch. No optimizations will be applied.")
 
 
 class KernelFilter:
@@ -283,7 +284,10 @@ def main():
         print("########################")
         print("#######Use TileGym#########")
         print("########################")
-        apply_tilegym_patch(args.model_id, args.use_attn, use_cutile=(backend == "cutile"))
+        # apply_tilegym_patch(args.model_id, args.use_attn, use_cutile=True)
+        apply_tilegym_kernel_to_deepseek_v2(
+            rope=True, rms_norm=True, swiglu=True, attn=True, moe=True, use_cutile=True
+        )
 
     # Load model with cache support
     model_kwargs = {
@@ -400,124 +404,6 @@ def main():
         with open(args.summary_file, "a") as f:
             f.write(summary_line + "\n")
         print(f"Summary written to {args.summary_file}: {summary_line}")
-
-    if args.profile:
-        print("Profile the model...")
-        with profile(
-            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-            with_stack=False,
-            record_shapes=False,
-        ) as prof:
-            with record_function("model_inference"):
-                with torch.no_grad():
-                    _ = forward_wrapper.forward()
-        # prof.export_chrome_trace("trace.json")
-        filtered_results = []
-        kernel_filter = KernelFilter()
-
-        for item in prof.key_averages():
-            if kernel_filter.contains(item.key):
-                filtered_results.append(item)
-
-        # Create a custom table with just the filtered results
-        if filtered_results:
-            print("\n===== FILTERED PROFILER RESULTS =====")
-            headers = [
-                "Name",
-                "CPU time total (us)",
-                "CPU time avg (us)",
-                "CUDA time total (us)",
-                "CUDA time avg (us)",
-                "Count",
-            ]
-            row_format = "{:<80} {:<20} {:<20} {:<20} {:<20} {:<10}"
-
-            print(row_format.format(*headers))
-            print("-" * 140)
-            total_device_time = 0.0
-            calculated_key = {}
-            for item in filtered_results:
-                if kernel_filter.contains(item.key):
-                    calculated_key[item.key] = item.device_time_total
-                    total_device_time += item.device_time_total
-                print(
-                    row_format.format(
-                        item.key[:50],
-                        f"{item.cpu_time_total:.2f}",
-                        f"{item.cpu_time:.2f}",
-                        f"{item.device_time_total:.2f}",
-                        f"{item.device_time:.2f}",
-                        item.count,
-                    )
-                )
-            print(f"Calculated key: {calculated_key}")
-        print(prof.key_averages().table(row_limit=1))
-
-        # Save profiler results to CSV file
-        all_results = prof.key_averages()
-
-        # Sort results by device_time_total in descending order
-        all_results = sorted(all_results, key=lambda x: x.device_time_total, reverse=True)
-
-        # Generate timestamp for filename
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_dir = args.log_dir
-        os.makedirs(log_dir, exist_ok=True)
-        filename = f"{log_dir}/profiler_results_{case_id}_{timestamp}.csv"
-
-        with open(filename, "w") as f:
-            # Write CSV header with self-time columns and device type
-            f.write(
-                "Name,CPU_time_total_us,CPU_time_avg_us,CUDA_time_total_us,CUDA_time_avg_us,Self_CPU_time_total_us,Self_CUDA_time_total_us,Count,Filtered,DeviceType\n"
-            )
-
-            # Write CSV rows with self-time data and device type (include all operations for inspection)
-            for item in all_results:
-                # Get device type string (e.g., "DeviceType.CUDA" or "DeviceType.CPU")
-                device_type_str = str(item.device_type) if hasattr(item, "device_type") else ""
-                f.write(
-                    f'"{item.key}",{item.cpu_time_total:.2f},{item.cpu_time:.2f},{item.device_time_total:.2f},{item.device_time:.2f},{item.self_cpu_time_total:.2f},{item.self_device_time_total:.2f},{item.count},{kernel_filter.contains(item.key)},{device_type_str}\n'
-                )
-        trace_filename = f"{log_dir}/trace_{case_id}_{timestamp}.json"
-        prof.export_chrome_trace(trace_filename)
-
-        # Zip the trace file
-        zip_filename = f"{log_dir}/trace_{case_id}_{timestamp}.zip"
-        with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
-            zipf.write(trace_filename)
-        # Remove the original trace file to save space
-        os.remove(trace_filename)
-
-        print(f"Trace file zipped to {zip_filename}")
-        print(f"Profiler results saved to {filename}")
-        print(prof.key_averages().table(row_limit=1))
-
-        # Calculate CUDA kernel time from profiler results (for summary update)
-        if args.summary_file:
-            cuda_kernel_time_us = 0.0
-            for item in all_results:
-                # Only count DeviceType.CUDA operations (actual kernels), exclude model_inference
-                device_type_str = str(item.device_type) if hasattr(item, "device_type") else ""
-                if device_type_str == "DeviceType.CUDA" and item.key != "model_inference":
-                    cuda_kernel_time_us += item.self_device_time_total
-
-            cuda_kernel_time_ms = cuda_kernel_time_us / 1000.0
-
-            # Update the summary line with CUDA kernel time
-            updated_summary_line = f"{summary_line} | {cuda_kernel_time_ms:>10.1f}\n"
-
-            # Read the file, replace the last line, and write back
-            with open(args.summary_file, "r") as f:
-                lines = f.readlines()
-
-            if lines:
-                # Replace the last line (which should be our summary)
-                lines[-1] = updated_summary_line
-
-            with open(args.summary_file, "w") as f:
-                f.writelines(lines)
-
-            print(f"Updated summary with CUDA kernel time: {cuda_kernel_time_ms:.1f} ms")
 
 
 if __name__ == "__main__":

@@ -313,6 +313,6 @@ class TileRMSNorm(nn.Module):
         return f"{tuple(self.weight.shape)}, eps={self.variance_epsilon}"
 
 
-@register_impl("get_rms_norm_module", backend="cutile")
+# @register_impl("get_rms_norm_module", backend="cutile")
 def get_rms_norm_module():
     return TileRMSNorm

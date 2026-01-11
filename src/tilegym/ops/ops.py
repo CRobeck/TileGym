@@ -23,20 +23,20 @@ from tilegym.backend import get_current_backend
 # ============================================================================
 
 
-@dispatch(
-    "get_apply_rope_func",
-)
-def get_apply_rope_func(model: str = "llama"):
-    """
-    Returns a callable that applies Rotary Position Embedding (RoPE) for a given model variant.
+# @dispatch(
+#     "get_apply_rope_func",
+# )
+# def get_apply_rope_func(model: str = "llama"):
+#     """
+#     Returns a callable that applies Rotary Position Embedding (RoPE) for a given model variant.
 
-    Args:
-        model: Model name that determines the RoPE layout transformation. Supported: 'llama', 'deepseek'
+#     Args:
+#         model: Model name that determines the RoPE layout transformation. Supported: 'llama', 'deepseek'
 
-    Returns:
-        Callable implementing RoPE application with signature similar to `apply_rope_base`
-    """
-    raise NotImplementedError(f"get_apply_rope_func is not implemented for {get_current_backend()}")
+#     Returns:
+#         Callable implementing RoPE application with signature similar to `apply_rope_base`
+#     """
+#     raise NotImplementedError(f"get_apply_rope_func is not implemented for {get_current_backend()}")
 
 
 @dispatch(
@@ -122,41 +122,41 @@ def get_fused_swiglu_module():
     return PartiallyFusedSwiGLUMLP
 
 
-@dispatch(
-    "rms_norm",
-)
-def rms_norm(
-    input: torch.Tensor,
-    normalized_shape: Any,
-    weight: torch.Tensor,
-    eps: float,
-    bias: Optional[torch.Tensor] = None,
-    static_persistent: bool = False,
-    **kwargs: Any,
-):
-    """
-    Returns the Root-Mean-Squared Norm of input along dimension N.
+# @dispatch(
+#     "rms_norm",
+# )
+# def rms_norm(
+#     input: torch.Tensor,
+#     normalized_shape: Any,
+#     weight: torch.Tensor,
+#     eps: float,
+#     bias: Optional[torch.Tensor] = None,
+#     static_persistent: bool = False,
+#     **kwargs: Any,
+# ):
+#     """
+#     Returns the Root-Mean-Squared Norm of input along dimension N.
 
-    Args:
-        input: Tensor of shape (M, N)
-        normalized_shape: Unused
-        weight: Tensor of shape (N,)
-        eps: small scaler to be added to variance calculation prior to division.
-        bias: Bias tensor of shape (N,), default is None
-        static_persistent: Whether to use static persistent kernel, default is False
-        **kwargs: Additional arguments for backend-specific configurations
-    """
-    raise NotImplementedError(f"rms_norm is not implemented for {get_current_backend()}")
+#     Args:
+#         input: Tensor of shape (M, N)
+#         normalized_shape: Unused
+#         weight: Tensor of shape (N,)
+#         eps: small scaler to be added to variance calculation prior to division.
+#         bias: Bias tensor of shape (N,), default is None
+#         static_persistent: Whether to use static persistent kernel, default is False
+#         **kwargs: Additional arguments for backend-specific configurations
+#     """
+#     raise NotImplementedError(f"rms_norm is not implemented for {get_current_backend()}")
 
 
-@dispatch(
-    "get_rms_norm_module",
-)
-def get_rms_norm_module():
-    """
-    Returns the RMSNorm module class.
-    """
-    raise NotImplementedError(f"get_rms_norm_module is not implemented for {get_current_backend()}")
+# @dispatch(
+#     "get_rms_norm_module",
+# )
+# def get_rms_norm_module():
+#     """
+#     Returns the RMSNorm module class.
+#     """
+#     raise NotImplementedError(f"get_rms_norm_module is not implemented for {get_current_backend()}")
 
 
 @dispatch(
