@@ -11,7 +11,7 @@ MODEL_ID="deepseek-ai/DeepSeek-V2-Lite-Chat"
 INPUT_FILE="sample_inputs/input_prompt_small.txt"
 INPUT_TEXT="Explain machine learning"
 
-OUTPUT_LENGTH=100
+OUTPUT_LENGTH=330
 SUMMARY_FILE="deepseek_benchmark_summary.txt"
 
 echo "========================================"

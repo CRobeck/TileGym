@@ -16,9 +16,18 @@ from torch.profiler import record_function
 from transformers import AutoModelForCausalLM
 from transformers import AutoTokenizer
 
-from tilegym.transformers import apply_tilegym_kernel_to_deepseek_v2
+
+#from tilegym.transformers import apply_tilegym_kernel_to_deepseek_v2
 # from tilegym.transformers import apply_tilegym_kernel_to_llama
 from transformers.models.deepseek_v2 import modeling_deepseek_v2 as modeling_deepseek
+from tilegym.logger import get_logger
+from tilegym.ops.cutile.rope import get_apply_rope_func
+from tilegym.ops.fused_swiglu import PartiallyFusedSwiGLUMLP
+from tilegym.ops.cutile.rms_norm import TileRMSNorm
+from tilegym.transformers.deepseek2.modeling_deepseek import DeepseekV2MoETileGym
+from tilegym.transformers.deepseek2.modeling_deepseek import tilegym_deepseek_v2_forward
+
+logger = get_logger(__name__)
 
 
 def check_and_setup_model_cache(model_id):
@@ -277,17 +286,33 @@ def main():
     # Load tokenizer and model with cache support
     print(f"Loading model {args.model_id}...")
     tokenizer = load_tokenizer_with_cache(args.model_id)
-    backend = "base"
-    if args.use_tilegym:
-        if args.use_cutile:
-            backend = "cutile"
-        print("########################")
-        print("#######Use TileGym#########")
-        print("########################")
-        # apply_tilegym_patch(args.model_id, args.use_attn, use_cutile=True)
-        apply_tilegym_kernel_to_deepseek_v2(
-            rope=True, rms_norm=True, swiglu=True, attn=True, moe=True, use_cutile=True
-        )
+    # backend = "base"
+    # if args.use_tilegym:
+        # if args.use_cutile:
+    backend = "cutile"
+    print("########################")
+    print("#######Use TileGym#########")
+    print("########################")
+    # apply_tilegym_patch(args.model_id, args.use_attn, use_cutile=True)
+    # apply_tilegym_kernel_to_deepseek_v2(
+    #     rope=True, rms_norm=True, swiglu=True, attn=True, moe=True, use_cutile=True
+    # )
+    logger.info("--------------------------------")
+    logger.info("apply_tilegym_kernel_to_deepseek_v2")
+    logger.info("--------------------------------")
+    from transformers.models.deepseek_v2 import modeling_deepseek_v2 as modeling_deepseek
+
+    modeling_deepseek.apply_rotary_emb = get_apply_rope_func()
+
+    modeling_deepseek.DeepseekV2RMSNorm = TileRMSNorm
+
+     # Replace DeepseekV2MLP with TileGym's FUSED SwiGLU implementation
+     # This eliminates ALL PyTorch linear operations by fusing gate+up+down projections.
+     # This is critical for shared experts which run on every token.
+    modeling_deepseek.DeepseekV2MLP = PartiallyFusedSwiGLUMLP
+    modeling_deepseek.DeepseekV2Attention.forward = tilegym_deepseek_v2_forward
+
+    modeling_deepseek.DeepseekV2MoE = DeepseekV2MoETileGym
 
     # Load model with cache support
     model_kwargs = {
@@ -375,14 +400,14 @@ def main():
     print(f"Average throughput: {avg_tokens_per_sec:.2f} ± {std_tokens_per_sec:.2f} tokens/sec")
 
     # Display generated outputs if needed
-    if args.show_outputs:
-        print("\n===== GENERATED OUTPUTS =====")
-        for batch_idx, outputs in enumerate(outputs_list):
-            for i in range(outputs.shape[0]):
-                decoded_output = tokenizer.decode(outputs[i], skip_special_tokens=True)
-                print(f"\nBatch {batch_idx + 1}, Output {i + 1}:")
-                print(decoded_output)
-                print("-" * 50)
+    # if args.show_outputs:
+    print("\n===== GENERATED OUTPUTS =====")
+    for batch_idx, outputs in enumerate(outputs_list):
+        for i in range(outputs.shape[0]):
+            decoded_output = tokenizer.decode(outputs[i], skip_special_tokens=False)
+            print(f"\nBatch {batch_idx + 1}, Output {i + 1}:")
+            print(decoded_output)
+            print("-" * 50)
 
     # Generate case identifier
     case_id = f"{args.model_id.split('/')[-1]}"
